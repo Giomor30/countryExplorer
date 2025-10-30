@@ -10,3 +10,4 @@ Proyecto que consume la API pública **REST Countries** para mostrar informació
 
 ## API usada
 [REST Countries](https://restcountries.com/)
+y [OpenWeather](https://openweathermap.org/)
