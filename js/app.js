@@ -2,6 +2,8 @@
 
 // URL base de la API REST Countries con campos específicos
 const API_URL = "https://restcountries.com/v3.1/all?fields=name,capital,region,population,flags,cca2,latlng,capitalInfo";
+// 🌦️ Clave de OpenWeather (frontend; visible en cliente)
+const WEATHER_KEY = "86f9138a09eb87bc2671de035b662612";
 
 // Esperar a que el DOM esté completamente cargado
 document.addEventListener("DOMContentLoaded", () => {
@@ -70,28 +72,32 @@ function initializeApp() {
       lon: (capitalCoords && capitalCoords[1]) || (countryCoords && countryCoords[1]) || null
     };
   }
-  // 🌦️ Obtener clima actual del país usando OpenWeatherMap
-const WEATHER_KEY = "86f9138a09eb87bc2671de035b662612";
-
-async function getWeather(countryName) {
+// 🌦️ Obtener clima actual del país usando OpenWeatherMap
+async function getWeather(cityOrCountry) {
   try {
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${countryName}&appid=${WEATHER_KEY}&units=metric&lang=es`
-    );
+    if (!WEATHER_KEY) {
+      console.error("WEATHER_KEY vacío o no definido");
+      return null;
+    }
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityOrCountry)}&appid=${WEATHER_KEY}&units=metric&lang=es`;
+    console.log("[OWM] GET:", url);
+    const response = await fetch(url);
     const data = await response.json();
 
-    if (data.cod === 200) {
+    console.log("[OWM] Status:", response.status, "Body.cod:", data.cod, "msg:", data.message);
+
+    if (response.ok && (data.cod === 200 || data.cod === "200")) {
       return {
         temp: data.main.temp,
         desc: data.weather[0].description,
         icon: data.weather[0].icon
       };
     } else {
-      return null;
+      return { error: data.message || "Error desconocido" };
     }
   } catch (error) {
     console.error("Error al obtener clima:", error);
-    return null;
+    return { error: error.message };
   }
 }
 
@@ -129,7 +135,7 @@ async function getWeather(countryName) {
               <strong>Región:</strong> ${data.region}<br>
               <strong>Población:</strong> ${data.population.toLocaleString()}
             </p>
-            <button class="btn btn-outline-primary btn-sm view-weather" data-name="${data.name}" data-lat="${data.lat ?? ''}" data-lon="${data.lon ?? ''}">Ver clima</button>
+            <button class="btn btn-outline-primary btn-sm view-weather" data-name="${data.name}" data-city="${data.capital}" data-lat="${data.lat ?? ''}" data-lon="${data.lon ?? ''}">Ver clima</button>
           </div>
         </div>
       `;
@@ -171,6 +177,7 @@ async function getWeather(countryName) {
     const btn = e.target.closest('.view-weather');
     if (!btn) return;
     const name = btn.getAttribute('data-name');
+    const city = btn.getAttribute('data-city');
     const lat = parseFloat(btn.getAttribute('data-lat'));
     const lon = parseFloat(btn.getAttribute('data-lon'));
 
@@ -186,12 +193,14 @@ async function getWeather(countryName) {
       let weather;
       if (!isNaN(lat) && !isNaN(lon)) {
         weather = await getWeatherByCoords(lat, lon);
+      } else if (city && city !== 'N/A') {
+        weather = await getWeather(city);
       } else {
         weather = await getWeather(name);
       }
 
-      if (!weather) {
-        bodyEl.innerHTML = `<div class="alert alert-warning">No fue posible obtener el clima.</div>`;
+      if (!weather || weather.error) {
+        bodyEl.innerHTML = `<div class="alert alert-warning">No fue posible obtener el clima.${weather?.error ? `<br><small>${weather.error}</small>` : ''}</div>`;
         return;
       }
 
@@ -215,17 +224,24 @@ async function getWeather(countryName) {
 // Obtener clima por coordenadas
 async function getWeatherByCoords(lat, lon) {
   try {
-    const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_KEY}&units=metric&lang=es`);
+    if (!WEATHER_KEY) {
+      console.error("WEATHER_KEY vacío o no definido");
+      return null;
+    }
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_KEY}&units=metric&lang=es`;
+    console.log("[OWM] GET:", url);
+    const response = await fetch(url);
     const data = await response.json();
-    if (data.cod === 200) {
+    console.log("[OWM] Status:", response.status, "Body.cod:", data.cod, "msg:", data.message);
+    if (response.ok && (data.cod === 200 || data.cod === "200")) {
       return {
         temp: data.main.temp,
         desc: data.weather[0].description,
         icon: data.weather[0].icon
       };
     }
-    return null;
+    return { error: data.message || "Error desconocido" };
   } catch (e) {
-    return null;
+    return { error: e.message };
   }
 }
