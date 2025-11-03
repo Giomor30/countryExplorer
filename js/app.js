@@ -89,8 +89,20 @@ async function getWeather(cityOrCountry) {
     if (response.ok && (data.cod === 200 || data.cod === "200")) {
       return {
         temp: data.main.temp,
+        feelsLike: data.main.feels_like,
+        tempMin: data.main.temp_min,
+        tempMax: data.main.temp_max,
+        humidity: data.main.humidity,
+        pressure: data.main.pressure,
         desc: data.weather[0].description,
-        icon: data.weather[0].icon
+        icon: data.weather[0].icon,
+        windSpeed: data.wind?.speed || 0,
+        windDeg: data.wind?.deg || 0,
+        visibility: data.visibility ? (data.visibility / 1000).toFixed(1) : null,
+        clouds: data.clouds?.all || 0,
+        sunrise: data.sys?.sunrise || null,
+        sunset: data.sys?.sunset || null,
+        city: data.name
       };
     } else {
       return { error: data.message || "Error desconocido" };
@@ -204,13 +216,110 @@ async function getWeather(cityOrCountry) {
         return;
       }
 
+      // Función auxiliar para obtener dirección del viento
+      function getWindDirection(deg) {
+        const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+        return directions[Math.round(deg / 22.5) % 16];
+      }
+      
+      // Función auxiliar para formatear hora
+      function formatTime(timestamp) {
+        if (!timestamp) return 'N/A';
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      }
+      
       const iconUrl = `https://openweathermap.org/img/wn/${weather.icon}@2x.png`;
+      const windDir = weather.windDeg > 0 ? getWindDirection(weather.windDeg) : 'N/A';
+      const cityName = weather.city || city || name;
+      
       bodyEl.innerHTML = `
-        <div class="d-flex align-items-center">
-          <img src="${iconUrl}" alt="icono clima" width="60" height="60" class="me-2"/>
-          <div>
-            <div class="fs-4 fw-semibold">${Math.round(weather.temp)}°C</div>
-            <div class="text-capitalize">${weather.desc}</div>
+        <div class="weather-modal-content">
+          <div class="weather-main-info">
+            <img src="${iconUrl}" alt="icono clima" class="weather-icon"/>
+            <div class="weather-temp">${Math.round(weather.temp)}°C</div>
+          </div>
+          <div class="weather-description text-capitalize">${weather.desc}</div>
+          <div class="weather-location">📍 ${cityName}</div>
+          
+          <div class="weather-details-grid">
+            <div class="weather-detail-item">
+              <div class="detail-icon">🌡️</div>
+              <div class="detail-content">
+                <span class="detail-label">Sensación térmica</span>
+                <span class="detail-value">${Math.round(weather.feelsLike)}°C</span>
+              </div>
+            </div>
+            
+            <div class="weather-detail-item">
+              <div class="detail-icon">📊</div>
+              <div class="detail-content">
+                <span class="detail-label">Min / Max</span>
+                <span class="detail-value">${Math.round(weather.tempMin)}° / ${Math.round(weather.tempMax)}°</span>
+              </div>
+            </div>
+            
+            <div class="weather-detail-item">
+              <div class="detail-icon">💧</div>
+              <div class="detail-content">
+                <span class="detail-label">Humedad</span>
+                <span class="detail-value">${weather.humidity}%</span>
+              </div>
+            </div>
+            
+            <div class="weather-detail-item">
+              <div class="detail-icon">🌀</div>
+              <div class="detail-content">
+                <span class="detail-label">Presión</span>
+                <span class="detail-value">${weather.pressure} hPa</span>
+              </div>
+            </div>
+            
+            <div class="weather-detail-item">
+              <div class="detail-icon">💨</div>
+              <div class="detail-content">
+                <span class="detail-label">Viento</span>
+                <span class="detail-value">${weather.windSpeed.toFixed(1)} m/s ${windDir}</span>
+              </div>
+            </div>
+            
+            ${weather.visibility ? `
+            <div class="weather-detail-item">
+              <div class="detail-icon">👁️</div>
+              <div class="detail-content">
+                <span class="detail-label">Visibilidad</span>
+                <span class="detail-value">${weather.visibility} km</span>
+              </div>
+            </div>
+            ` : ''}
+            
+            <div class="weather-detail-item">
+              <div class="detail-icon">☁️</div>
+              <div class="detail-content">
+                <span class="detail-label">Nubosidad</span>
+                <span class="detail-value">${weather.clouds}%</span>
+              </div>
+            </div>
+            
+            ${weather.sunrise ? `
+            <div class="weather-detail-item">
+              <div class="detail-icon">🌅</div>
+              <div class="detail-content">
+                <span class="detail-label">Amanecer</span>
+                <span class="detail-value">${formatTime(weather.sunrise)}</span>
+              </div>
+            </div>
+            ` : ''}
+            
+            ${weather.sunset ? `
+            <div class="weather-detail-item">
+              <div class="detail-icon">🌇</div>
+              <div class="detail-content">
+                <span class="detail-label">Atardecer</span>
+                <span class="detail-value">${formatTime(weather.sunset)}</span>
+              </div>
+            </div>
+            ` : ''}
           </div>
         </div>
       `;
@@ -236,8 +345,20 @@ async function getWeatherByCoords(lat, lon) {
     if (response.ok && (data.cod === 200 || data.cod === "200")) {
       return {
         temp: data.main.temp,
+        feelsLike: data.main.feels_like,
+        tempMin: data.main.temp_min,
+        tempMax: data.main.temp_max,
+        humidity: data.main.humidity,
+        pressure: data.main.pressure,
         desc: data.weather[0].description,
-        icon: data.weather[0].icon
+        icon: data.weather[0].icon,
+        windSpeed: data.wind?.speed || 0,
+        windDeg: data.wind?.deg || 0,
+        visibility: data.visibility ? (data.visibility / 1000).toFixed(1) : null,
+        clouds: data.clouds?.all || 0,
+        sunrise: data.sys?.sunrise || null,
+        sunset: data.sys?.sunset || null,
+        city: data.name
       };
     }
     return { error: data.message || "Error desconocido" };
